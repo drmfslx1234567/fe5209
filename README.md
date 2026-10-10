@@ -1,6 +1,6 @@
 # FE5209 小组项目：基于深度动量网络的 ETF 交易策略
 
-本仓库在约 50 只 ETF 上复现 Lim, Zohren & Roberts (2019) *Enhancing Time Series Momentum Strategies Using Deep Neural Networks* 的核心方法，并扩展了交易成本分析、仓位平滑，以及课程要求的自动更新流程。
+本仓库在 21 只 ETF 上复现 Lim, Zohren & Roberts (2019) *Enhancing Time Series Momentum Strategies Using Deep Neural Networks* 的核心方法，并扩展了交易成本分析、仓位平滑，以及课程要求的自动更新流程。
 
 - **模型**：MLP 和 LSTM 直接输出每个资产的仓位（[-1, 1]），以最大化 Sharpe 比率为训练目标。
 - **框架**：时间序列动量的波动率缩放，每个资产的仓位乘以 `sigma_tgt / sigma_t`，组合在资产间等权。
@@ -9,17 +9,34 @@
 
 > 本项目所有数字都是历史回测结果，不代表未来表现。
 
+### 资产池（2026-10-10 确定）
+
+共 21 只，定义在 `src/universe.py`，全项目统一从这里读取：
+
+| 类别 | 数量 | 标的 |
+|---|---|---|
+| 美股大盘和风格 | 5 | SPY、QQQ、DIA、MDY、IWM |
+| 美股行业 | 11 | XLK、XLV、XLF、XLE、XLY、XLP、XLI、XLB、XLU、XLRE、XLC |
+| 贵金属 | 2 | GLD、SLV |
+| 美国长债（3 倍杠杆） | 1 | TMF |
+| 香港 | 1 | 2800.HK |
+| 新加坡 | 1 | ES3.SI |
+
+筛选标准：前 20 只是成本表中流动性最高的一层（近 3 年日成交额中位数不低于 1 亿美元）；ES3.SI 是课程要求必须包含的新加坡标的。筛选只依据流动性，与任何策略的回测表现无关。
+
+项目早期使用过约 50 只 ETF 的资产池，原始价格和成本表中仍保留这些标的的数据。
+
 ---
 
 ## 1. 当前进度
 
 | 部分 | 状态 | 说明 |
 |---|---|---|
-| 原始数据 | 已完成 | 价格和交易成本表在 `data/raw/` |
-| 特征工程 | **代码待上传** | `pipeline_data_processing` 及其输出 `data/processed/*.csv` |
+| 原始数据 | 已完成，**需更新到测试期** | 价格和交易成本表在 `data/raw/`，目前只到 2026-09-02 |
+| 特征工程 | 已完成 | `src/pipeline_data_processing.py`，输出需在本地运行生成 |
 | 基准策略 | 已完成，待合并 | 目前有两套独立实现（见 4.2），计划合并后重新输出 |
-| 模型训练 | 代码已完成，**结果文件待上传** | `results/training/` 下的预测和收益序列 |
-| 模型对比、成本、平滑分析 | 代码已完成 | 依赖上一行的结果文件才能运行 |
+| 模型训练 | 代码已完成，**需在 21 只上重新训练** | 此前的训练基于旧资产池 |
+| 模型对比、成本、平滑分析 | 代码已完成 | 依赖训练结果，重新训练后重跑 |
 | 诊断脚本 | **待上传** | `scripts/` 下的 5 个脚本 |
 | 自动更新流程 | **待上传**，且尚未在真实数据上验证 | `live/` 下的 4 个脚本 |
 | 测试期回测 | 未开始 | `notebook/05_backtest/` |
@@ -44,6 +61,7 @@ fe5209/
 │
 ├── src/                     被 import 的模块
 │   ├── paths.py             所有文件夹位置的统一定义
+│   ├── universe.py          资产池（21 只）
 │   ├── neural_config.py     训练和回测的共享配置
 │   ├── neural_data.py       数据读取、划分、数据集
 │   ├── neural_models.py     MLP / LSTM 定义
@@ -51,10 +69,10 @@ fe5209/
 │   ├── train_utils.py       训练循环和早停
 │   ├── neural_search.py     随机搜索 + top-K + 多种子集成
 │   ├── neural_backtest.py   预测、组合构建、绩效指标
-│   └── pipeline_data_processing.py    【待上传】特征工程
+│   └── pipeline_data_processing.py    特征工程
 │
 ├── notebook/                按流程顺序编号
-│   ├── 01_data/             【待上传】特征工程
+│   ├── 01_data/             （空，特征工程以脚本形式运行）
 │   ├── 02_benchmark/        基准策略
 │   ├── 03_training/         模型训练
 │   ├── 04_evaluation/       模型对比、成本和平滑分析
@@ -93,7 +111,7 @@ pip install -r requirements.txt
 
 | 步骤 | 运行 | 读取 | 输出到 |
 |---|---|---|---|
-| 1 | `01_data/pipeline_data_processing`【待上传】 | `data/raw/` | `data/processed/` |
+| 1 | `python src/pipeline_data_processing.py`（在项目根目录下） | `data/raw/` | `data/processed/` |
 | 2 | `03_training/train_mlp`、`train_lstm` | `data/processed/` | `results/training/` |
 | 3 | `02_benchmark/benchmark_baz` | `data/processed/`、`results/training/` | `results/benchmark/baz/` |
 | 4 | `04_evaluation/model_compare` | 第 2、3 步的输出 | `results/evaluation/` |
@@ -129,9 +147,9 @@ pip install -r requirements.txt
 |---|---|
 | `data/raw/ohlcv_data_adjusted.xlsx` | 复权后的 OHLCV，每个标的一个 sheet |
 | `data/raw/ohlcv_data_by_date_adjusted.xlsx` | 同样的数据按日期排列，特征工程读取其中的 `Close` sheet |
-| `data/raw/trading_cost_50_etfs_1.xlsx` | 每个标的的单边交易成本（bp）。含全部标的、高流动性标的（21 只）两张列表，以及流动性分层说明。`FXS` 没有成本数据 |
-| `data/processed/full_feature_panel.csv`【待生成】 | 全部特征，含没有未来收益的行 |
-| `data/processed/model_ready_dataset.csv`【待生成】 | 训练和回测实际使用的数据 |
+| `data/raw/trading_cost_50_etfs_1.xlsx` | 每个标的的单边交易成本（bp）。本项目使用其中的 `Cost(高流动性20支)` sheet（即 21 只资产池）；另有早期 50 只的列表和流动性分层说明 |
+| `data/processed/full_feature_panel.csv`（本地生成） | 全部特征，含没有未来收益的行 |
+| `data/processed/model_ready_dataset.csv`（本地生成） | 训练和回测实际使用的数据，约 11.3 万行 |
 
 特征共 8 个：1 日、1 月、3 月、6 月、1 年的波动率标准化收益，以及时间尺度为 (8, 24)、(16, 48)、(32, 96) 的三个 MACD 信号。
 
@@ -159,7 +177,7 @@ pip install -r requirements.txt
 | `03_training/train_mlp`、`train_lstm` | walk-forward 训练 | `*_oos_predictions.csv`、`*_oos_daily_returns.csv`、`*_search_log.csv` |
 | `04_evaluation/model_compare` | 汇总表和净值曲线 | `neural_model_comparison.csv`、`neural_equity_curves.png` |
 | `04_evaluation/cost_eval` | 统一成本 0–10 bp 下 Sharpe 的变化，含“静态仓位”诊断 | `cost_sweep_sharpe.csv` |
-| `04_evaluation/cost_eval_assets` | 逐资产成本，分全部标的和高流动性标的两个资产池，成本倍数 0×、0.5×、1×、2× | `cost_assets_*.csv` |
+| `04_evaluation/cost_eval_assets` | 逐资产成本，成本倍数 0×、0.5×、1×、2× | `cost_assets_universe21.csv` |
 | `04_evaluation/smooth_eval` | 事后仓位平滑（EWM 半衰期和不交易带）。参数在第 1–2 折上选，只在第 3–4 折上报告 | `*_smoothing_grid.csv` |
 
 ### 5.4 待上传的文件
@@ -168,7 +186,6 @@ pip install -r requirements.txt
 
 | 位置 | 文件 | 作用 |
 |---|---|---|
-| `src/`、`notebook/01_data/` | `pipeline_data_processing.py` / `.ipynb` | 特征工程 |
 | `notebook/04_evaluation/` | `class_eval.ipynb` | 按资产类别拆分结果 |
 | `notebook/04_evaluation/` | `baz_strategy_transactioncost.ipynb` | 独立的 MACD 策略，带分市场的费率表 |
 | `scripts/` | `sig_test.py` | 逐年 Sharpe、Sharpe 差异的 bootstrap 检验 |
@@ -195,9 +212,9 @@ pip install -r requirements.txt
 
 ## 7. 已有结果
 
-以下数字来自此前的运行，对应的结果文件大部分尚未上传，重新运行后请更新。Sharpe 均为缩放到 15% 波动率之后的值。样本外约 19 年，Sharpe 的标准误约 0.25，所以 0.1 以内的差异不能和噪声区分。
+**以下数字全部基于早期约 50 只的资产池，不适用于当前的 21 只资产池，仅作记录。在 21 只上重新训练和评估后请替换。** 对应的结果文件大部分未上传。Sharpe 均为缩放到 15% 波动率之后的值。样本外约 19 年，Sharpe 的标准误约 0.25，所以 0.1 以内的差异不能和噪声区分。
 
-**不计成本，全部 ETF**（`neural_model_comparison.csv`）：
+**不计成本，旧资产池**（`neural_model_comparison.csv`）：
 
 | 策略 | 年化收益 | Sharpe | 最大回撤 |
 |---|---|---|---|
@@ -207,19 +224,18 @@ pip install -r requirements.txt
 | MACD | 5.9% | 0.38 | 37.2% |
 
 - **收益来源**：按资产类别看，模型的增值几乎只来自杠杆/反向债券 ETF 加 `UDN`，且集中在约五个年份（2019、2020、2022、2023、2026）。在股票、商品、外汇上接近静态仓位或 Long-Only。
-- **计入成本**（逐资产成本，1 倍，未平滑）：在全部 50 只标的上，神经网络亏损（LSTM −0.97，MLP −1.42），Long-Only 最好（0.46）。在 21 只高流动性标的上，Long-Only 0.81、LSTM 0.55、MLP 0.19，Long-Only 仍然第一。
+- **计入成本**（逐资产成本，1 倍，未平滑）：在全部 50 只标的上，神经网络亏损（LSTM −0.97，MLP −1.42），Long-Only 最好（0.46）。只取其中 21 只高流动性标的的仓位（模型未重新训练）时，Long-Only 0.81、LSTM 0.55、MLP 0.19，Long-Only 仍然第一。
 - **平滑**：在第 3–4 折上（统一成本），平滑后 LSTM 的年换手从约 54 降到 1.65，不计成本的 Sharpe 从 0.71 变为 0.69；MLP 没有改善。
 
 ---
 
 ## 8. 局限
 
-- 资产池以美股为主（约 51 只中的 31 只），有效独立资产数远小于论文的 88 个期货。
+- 资产池以美股为主（21 只中的 16 只），彼此高度相关，有效独立资产数远小于论文的 88 个期货。
 - 使用 ETF 收益，而不是论文的连续期货合约。
 - 成本表只包含买卖价差的一半，没有佣金、融券费用和冲击成本；并且把当前的价差用于整个样本期，低估了早期成本。部分 15 bp 是按流动性分层假设的，不是观测值。
 - **论文第 VI-A 节的换手率正则没有实现**，训练目标是不含成本的 Sharpe，用事后平滑代替。
 - 平滑参数是在第 1–2 折上按统一 2 bp 成本选的，不是按逐资产成本。
-- 模型不知道标的身份，所以镜像产品（做多/做空的成对 ETF）被当作独立资产。
 - 没有实现论文中的循环状态 dropout。
 - 自动更新流程只在合成数据上做过单元测试，尚未在真实数据上验证；其中的风控阈值是主观设定，没有历史验证。
 - 根据测试期结果来选资产池、参数或策略，会使样本外评估失效；这些设置应在测试期开始前固定。
