@@ -1,0 +1,24 @@
+# ---- caches (rebuilt automatically) ----
+data/cache/*
+!data/cache/.gitkeep
+*.pkl
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- editors ----
+.idea/
+.vscode/
+
+# ---- OS / Office temp files ----
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*

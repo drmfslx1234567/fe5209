@@ -1,6 +1,8 @@
 # neural_config.py —— 所有脚本 import 的配置
 
-DATA_PATH = "processed_data/model_ready_dataset.csv"   # 你的 pipeline 输出
+from paths import DATA_PROCESSED
+
+DATA_PATH = str(DATA_PROCESSED / "model_ready_dataset.csv")   # 你的 pipeline 输出
 
 SEED = 42
 TARGET_ANNUAL_VOL = 0.15               # 论文 sigma_tgt = 15%
